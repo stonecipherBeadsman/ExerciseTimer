@@ -17,16 +17,6 @@ No build tools or servers are required—the file can be opened directly from di
 - **Speech guidance** that announces each movement, provides countdown warnings at 30, 20, and 10 seconds, and prompts for repetition counts when needed.
 - **Clipboard export** to share the configured routine.
 
-## Testing
-
-Run the automated checks with the built-in Node.js test runner:
-
-```bash
-npm test
-```
-
-This executes both unit coverage for utility helpers and an end-to-end workflow simulation that drives the workout lifecycle in a mocked browser environment.
-
 ## Function Reference
 
 The JavaScript embedded in `exerciseTimer2.html` is organized into small functions that each manage a specific piece of behavior:
