@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <!-- Responsive meta tag for mobile -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exercise Timer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+
+  <style>
+    /* Reset some default browser styles */
+    body, h1, h3, ul, li, button, input, form {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #FF8624;
+      font-family: 'DotGothic16', sans-serif;
+      color: #333;
+    }
+
+    .dotgothic16-regular {
+      font-family: "DotGothic16", sans-serif;
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    .sheet {
+      width: 90%;
+      max-width: 1200px;
+      margin: 30px auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .timer-panel {
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 1rem;
+      font-size: 2em;
+      text-align: center;
+    }
+
+    /* 
+      NEW or UPDATED:
+      We make .timer-display overflow hidden so anything
+      scrolling horizontally goes "under" the edges.
+      Also, we add fading edges with ::before and ::after. 
+    */
+    .timer-display {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: #D0D0D0;
+      border-radius: 10px;
+      position: relative;       /* for pseudo-elements & marquee fade */
+      overflow: hidden;         /* hide the overspill of scrolling text */
+      padding: 1rem 0;         /* some vertical padding so fades aren't cut */
+    }
+    /* Fading edges on the left & right */
+    .timer-display::before,
+    .timer-display::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      width: 40px;       /* how wide the fade effect is */
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;        /* sit on top of the text */
+    }
+    .timer-display::before {
+      left: 0;
+      background: linear-gradient(to right, #D0D0D0, transparent);
+    }
+    .timer-display::after {
+      right: 0;
+      background: linear-gradient(to left, #D0D0D0, transparent);
+    }
+
+    /* #currentMovement: only do marquee if the text is too long. */
+    #currentMovement {
+      font-size: 2em;
+      margin-bottom: 10px;
+      white-space: nowrap;  /* needed for horizontal scroll */
+      display: inline-block; /* so transform animations apply cleanly */
+      z-index: 1;           /* behind the fade edges */
+    }
+
+    /* Marquee animation for #currentMovement when text is long. */
+    #currentMovement.marquee {
+      animation: marquee 10s linear infinite;
+    }
+    @keyframes marquee {
+      0%   { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    #display {
+      font-size: 4em;
+      font-weight: bold;
+      margin: 20px 0;
+      z-index: 1; /* ensure it's visible */
+    }
+
+    .action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+
+    .main-panel {
+      padding: 20px;
+    }
+
+    .exercise-list {
+      margin-top: 1rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    ul {
+      list-style: none;
+      margin: 20px 0;
+      padding: 0;
+    }
+    ul li {
+      background: #eee;
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 4px;
+      position: relative;
+    }
+    .over {
+      border: solid 4px #aaa;
+    }
+
+    .collapsed .exercise-details {
+      display: none;
+    }
+
+    .toggle-button {
+      position: static;
+      margin-left: 1rem; 
+      background: transparent;
+      border: none;
+      color: #007bff;
+      cursor: pointer;
+    }
+
+    #exerciseList li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #importSection, 
+    #buildSection,
+    #exportSection {
+      background: #D0D0D0;
+    }
+
+    .completed-exercise::after {
+      content: "\2713"; /* checkmark */
+      color: green;
+      margin-left: 10px;
+    }
+    .failed-exercise::after {
+      content: "\2717"; /* X mark */
+      color: red;
+      margin-left: 10px;
+    }
+
+    .collapsible-container {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 0.5rem;
+      margin-top: 1rem;
+    }
+    .collapsible-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      background: #f5f5f5;
+      border-radius: 4px;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .collapsible-header h3 {
+      margin: 0;
+    }
+    .collapsible-content {
+    }
+    .collapsed .collapsible-content {
+      display: none;
+    }
+
+    button {
+      background: #007bff;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px 0;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'DotGothic16', sans-serif;
+    }
+    input {
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 100%;
+    }
+
+    .inline-form {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 0.5rem;
+    }
+    .input-group {
+      flex: 1;
+      min-width: 120px;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        display: none;
+      }
+      #currentMovement {
+        font-size: 3em;
+      }
+      #display {
+        font-size: 5em;
+      }
+      .sheet {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        background: #FF8624;
+        margin: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .timer-panel {
+        flex: 0 0 auto;
+      }
+      .main-panel {
+        flex: 1 1 auto;
+        overflow-y: auto;
+      }
+    }
+    /* Keep the timer bar visible while anything else scrolls */
+    .timer-panel {
+      position: sticky;   /* sticks inside whichever ancestor scrolls */
+      top: 0;             /* at the top edge of the scroll container */
+      z-index: 100;       /* above the list so it never hides */
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="sheet">
+    <!-- TIMER PANEL (top) -->
+    <div class="timer-panel">
+      <h1>Exercise Timer</h1>
+
+      <div class="timer-display">
+        <!-- #currentMovement and #display both within .timer-display -->
+        <div id="currentMovement">Ready?</div>
+        <div id="display">00:00</div>
+      </div>
+
+      <div class="action-bar">
+        <button id="startButton" onclick="handleStartOrRestart()" disabled>▷</button>
+        <button id="pauseResumeButton" onclick="pauseOrResumeWorkout()" disabled>||</button>
+        <button id="stopButton" onclick="stopWorkout()" disabled>[]</button>
+      </div>
+    </div>
+
+    <!-- MAIN PANEL (bottom) -->
+    <div class="main-panel">
+      <!-- Exercise list -->
+      <div class="exercise-list">
+        <ul id="exerciseList"></ul>
+      </div>
+
+      <!-- Collapsible: Import -->
+      <div id="importSection" class="collapsible-container collapsed">
+        <div class="collapsible-header" onclick="toggleCollapsible(this.parentNode)">
+          <h3>Import</h3>
+          <span>[Click to Expand/Collapse]</span>
+        </div>
+        <div class="collapsible-content">
+          <input type="text" id="exerciseString" placeholder="Name|Duration|Reps, ...">
+          <button onclick="addExercisesFromString()">Import Workout</button>
+        </div>
+      </div>
+
+      <!-- Collapsible: Build -->
+      <div id="buildSection" class="collapsible-container collapsed">
+        <div class="collapsible-header" onclick="toggleCollapsible(this.parentNode)">
+          <h3>Build</h3>
+          <span>[Click to Expand/Collapse]</span>
+        </div>
+        <div class="collapsible-content">
+          <form id="addExerciseForm" class="inline-form">
+            <div class="input-group">
+              <input type="text" id="exerciseName" placeholder="Exercise">
+            </div>
+            <div class="input-group">
+              <input type="number" id="exerciseDuration" placeholder="Duration (seconds)">
+            </div>
+            <div class="input-group">
+              <input type="number" id="exerciseReps" placeholder="Reps">
+            </div>
+            <button type="submit">Add Exercise</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Collapsible: Export -->
+      <div id="exportSection" class="collapsible-container collapsed">
+        <div class="collapsible-header" onclick="toggleCollapsible(this.parentNode)">
+          <h3>Export</h3>
+          <span>[Click to Expand/Collapse]</span>
+        </div>
+        <div class="collapsible-content">
+          <button onclick="exportWorkoutToClipboard()">Export Workout</button>
+        </div>
+      </div>
+    </div> <!-- end main-panel -->
+  </div><!-- end sheet -->
+
+  <script>
+    // -- Collapsible Toggle --
+    function toggleCollapsible(section) {
+      section.classList.toggle('collapsed');
+    }
+
+    // Global Variables
+    let timer;
+    let workout = [];
+    let synth = window.speechSynthesis;
+    let isPaused = false;
+    let remainingTime;
+    let currentTimerCallback = null;
+    let currentExerciseIndex = 0;
+    let isWorkoutFinished = false;
+
+    // Cache the buttons
+    const startBtn = document.getElementById('startButton');
+    const pauseBtn = document.getElementById('pauseResumeButton');
+    const stopBtn = document.getElementById('stopButton');
+    const exerciseList = document.getElementById('exerciseList');
+
+    // -- HELPER: update button states --
+    function updateButtonStates() {
+      const hasExercises = workout.length > 0;
+      if (isWorkoutFinished) {
+        pauseBtn.disabled = true;
+        stopBtn.disabled = true;
+        startBtn.disabled = false;
+        startBtn.textContent = "Restart Workout";
+      } else {
+        startBtn.disabled = !hasExercises;
+        pauseBtn.disabled = !hasExercises;
+        stopBtn.disabled = !hasExercises;
+        if (hasExercises) {
+          startBtn.textContent = "Start Workout";
+        }
+      }
+    }
+
+    // -- Add Exercise via Form --
+    document.getElementById('addExerciseForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const name = document.getElementById('exerciseName').value.trim();
+      const duration = parseInt(document.getElementById('exerciseDuration').value, 10) || null;
+      const reps = parseInt(document.getElementById('exerciseReps').value, 10) || null;
+
+      if (!name) return;
+      workout.push({ name, duration, reps });
+      addExerciseListItem(name, duration, reps);
+
+      document.getElementById('exerciseName').value = '';
+      document.getElementById('exerciseDuration').value = '';
+      document.getElementById('exerciseReps').value = '';
+
+      isWorkoutFinished = false;
+      updateButtonStates();
+    });
+
+    // -- Create <li> item in the UI --
+    function addExerciseListItem(name, duration, reps) {
+      const listItem = document.createElement('li');
+      let detailParts = [];
+      if (duration) detailParts.push(duration + ' seconds');
+      if (reps) detailParts.push(reps + ' reps');
+      const detailText = detailParts.join(' ');
+      const info = detailText ? `${name} - ${detailText}` : name;
+
+      listItem.innerHTML = `
+        <div class="exercise-details">
+          <span class="exercise-info">${info}</span>
+        </div>
+      `;
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'toggle-button';
+      toggleBtn.textContent = 'Collapse';
+      toggleBtn.onclick = function() {
+        listItem.classList.toggle('collapsed');
+        toggleBtn.textContent = listItem.classList.contains('collapsed') ? 'Expand' : 'Collapse';
+      };
+      listItem.appendChild(toggleBtn);
+
+      // Drag & Drop
+      listItem.draggable = true;
+      listItem.addEventListener('dragstart', handleDragStart);
+      listItem.addEventListener('dragover', handleDragOver);
+      listItem.addEventListener('drop', handleDrop);
+
+      exerciseList.appendChild(listItem);
+    }
+
+    // -- Export to Clipboard --
+    function exportWorkoutToClipboard() {
+      if (workout.length === 0) {
+        alert("No exercises to export.");
+        return;
+      }
+      const items = workout.map(item => {
+        let parts = [item.name];
+        if (item.duration) parts.push(String(item.duration));
+        if (item.reps) parts.push(String(item.reps));
+        return parts.join("|");
+      });
+      const exportString = items.join(", ");
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(exportString)
+          .then(() => alert("Workout copied:\n" + exportString))
+          .catch(err => alert("Could not copy: " + err));
+      } else {
+        fallbackCopyText(exportString);
+      }
+    }
+    function fallbackCopyText(str) {
+      const textArea = document.createElement("textarea");
+      textArea.value = str;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-99999px";
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand("copy");
+        alert("Workout copied:\n" + str);
+      } catch (err) {
+        alert("Could not copy: " + err);
+      }
+      document.body.removeChild(textArea);
+    }
+
+    // -- Rebuild the list (for "Restart Workout") --
+    function renderWorkoutList() {
+      exerciseList.innerHTML = '';
+      workout.forEach(item => {
+        addExerciseListItem(item.name, item.duration, item.reps);
+      });
+    }
+
+    // -- Import from String --
+    function addExercisesFromString() {
+      const exerciseString = document.getElementById('exerciseString').value.trim();
+      if (!exerciseString) return;
+
+      const exercises = exerciseString.split(',');
+      exercises.forEach(ex => {
+        const [n, d, r] = ex.split('|').map(x => x.trim());
+        if (!n) return;
+        const dur = parseInt(d, 10) || null;
+        const rep = parseInt(r, 10) || null;
+        workout.push({ name: n, duration: dur, reps: rep });
+        addExerciseListItem(n, dur, rep);
+      });
+      document.getElementById('exerciseString').value = '';
+      isWorkoutFinished = false;
+      updateButtonStates();
+    }
+
+    // -- Drag & Drop Handlers --
+    let draggedItem = null;
+    function handleDragStart(e) {
+      draggedItem = this;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', this.outerHTML);
+    }
+    function handleDragOver(e) {
+      if (e.preventDefault) e.preventDefault();
+      this.classList.add('over');
+      e.dataTransfer.dropEffect = 'move';
+      return false;
+    }
+    function handleDrop(e) {
+      if (e.stopPropagation) e.stopPropagation();
+      if (draggedItem !== this) {
+        this.parentNode.removeChild(draggedItem);
+        const dropHTML = e.dataTransfer.getData('text/html');
+        this.insertAdjacentHTML('beforebegin', dropHTML);
+
+        const droppedItem = this.previousSibling;
+        droppedItem.addEventListener('dragstart', handleDragStart);
+        droppedItem.addEventListener('dragover', handleDragOver);
+        droppedItem.addEventListener('drop', handleDrop);
+        updateWorkoutArray();
+      }
+      this.classList.remove('over');
+      return false;
+    }
+    function updateWorkoutArray() {
+      const listItems = document.querySelectorAll('#exerciseList li');
+      const newWorkout = [];
+      listItems.forEach(item => {
+        const text = item.querySelector('.exercise-info').textContent;
+        const [namePart, detailPart] = text.split(' - ');
+        const name = namePart.trim();
+
+        let duration = null;
+        let reps = null;
+        if (detailPart) {
+          const durationMatch = detailPart.match(/(\d+)\s*seconds/);
+          const repsMatch = detailPart.match(/(\d+)\s*reps/);
+          duration = durationMatch ? parseInt(durationMatch[1], 10) : null;
+          reps = repsMatch ? parseInt(repsMatch[1], 10) : null;
+        }
+        newWorkout.push({ name, duration, reps });
+      });
+      workout = newWorkout;
+      updateButtonStates();
+    }
+
+    // -- Timer display update --
+    function updateDisplay(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      document.getElementById('display').textContent =
+        `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    // -- Speak Utility --
+    function speak(text) {
+      if (!window.speechSynthesis) return;
+      const utterance = new SpeechSynthesisUtterance(text);
+      synth.speak(utterance);
+    }
+
+    // -- Pause/Resume --
+    function pauseOrResumeWorkout() {
+      if (workout.length === 0 || isWorkoutFinished) return;
+      if (isPaused) {
+        isPaused = false;
+        pauseBtn.textContent = "Pause Workout";
+        startTimer(remainingTime, () => {
+          if (typeof currentTimerCallback === 'function') {
+            currentTimerCallback();
+          }
+        });
+      } else {
+        isPaused = true;
+        clearInterval(timer);
+        pauseBtn.textContent = "Resume Workout";
+      }
+    }
+
+    // -- Stop --
+    function stopWorkout() {
+      if (workout.length === 0 || isWorkoutFinished) return;
+
+      clearInterval(timer);
+      isPaused = false;
+      pauseBtn.textContent = "Pause Workout";
+      updateDisplay(0);
+      document.getElementById('currentMovement').textContent = 'Ready?';
+
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    }
+
+    // -- "Start" or "Restart" button click --
+    function handleStartOrRestart() {
+      if (isWorkoutFinished) {
+        isWorkoutFinished = false;
+        renderWorkoutList();
+        document.getElementById('currentMovement').textContent = 'Ready?';
+        updateDisplay(0);
+        updateButtonStates();
+      } else {
+        startWorkout();
+      }
+    }
+
+    // -- Start the Workout Sequence --
+    async function startWorkout() {
+      if (workout.length === 0) return;
+      stopWorkout(); 
+      currentExerciseIndex = 0;
+      isWorkoutFinished = false;
+
+      async function nextExercise() {
+        if (isWorkoutFinished || currentExerciseIndex >= workout.length) {
+          return;
+        }
+        if (currentExerciseIndex === workout.length) {
+          speak('Workout complete!');
+          document.getElementById('currentMovement').textContent = 'Complete!';
+          isWorkoutFinished = true;
+          updateButtonStates();
+          return;
+        }
+
+        let exercise = workout[currentExerciseIndex];
+        let listItems = document.querySelectorAll('#exerciseList li');
+        let listItem = listItems[currentExerciseIndex];
+
+        // NEW or UPDATED:
+        // Set the currentMovement text, then decide if it’s "marquee"-worthy.
+        const currentMovementEl = document.getElementById('currentMovement');
+        currentMovementEl.textContent = exercise.name;
+        if (exercise.name.length > 15) {
+          currentMovementEl.classList.add('marquee');
+        } else {
+          currentMovementEl.classList.remove('marquee');
+        }
+
+        // listItem.scrollIntoView({
+        //   behavior: 'smooth',
+        //   block: 'start',
+        //   inline: 'nearest'
+        // });
+        listItem.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',  // ⬅ prevents forcing the item to the very top
+          inline: 'nearest'
+        });
+
+        let prefix = (currentExerciseIndex === 0) ? 'First movement: ' : 'Next movement: ';
+        let utteranceText = prefix + exercise.name;
+
+        if (exercise.duration) {
+          utteranceText += `, Duration: ${exercise.duration} seconds`;
+          let utterance = new SpeechSynthesisUtterance(utteranceText);
+          utterance.onend = function () {
+            if (isWorkoutFinished) return;
+            speak('Begin');
+            currentTimerCallback = function() {
+              if (isWorkoutFinished) return;
+              currentExerciseIndex++;
+              listItem.classList.add('completed-exercise');
+              listItem.classList.add('collapsed');
+              nextExercise();
+            };
+            startTimer(exercise.duration, currentTimerCallback);
+          };
+          if (window.speechSynthesis) synth.speak(utterance);
+
+        } else if (exercise.reps) {
+          utteranceText += `, ${exercise.reps} repetitions`;
+          let utterance = new SpeechSynthesisUtterance(utteranceText);
+          utterance.onend = function () {
+            if (isWorkoutFinished) return;
+            const repsDone = window.prompt('Enter the number of repetitions done:');
+            if (repsDone !== null) {
+              listItem.querySelector('.exercise-details').innerHTML += 
+                ` (Completed: ${repsDone} reps)`;
+              if (parseInt(repsDone, 10) >= exercise.reps) {
+                listItem.classList.add('completed-exercise');
+              } else {
+                listItem.classList.add('failed-exercise');
+              }
+            }
+            listItem.classList.add('collapsed');
+            currentExerciseIndex++;
+            nextExercise();
+          };
+          if (window.speechSynthesis) synth.speak(utterance);
+
+        } else {
+          // Instruction item (no duration, no reps)
+          let utterance = new SpeechSynthesisUtterance(utteranceText + '. Instruction only.');
+          utterance.onend = function() {
+            if (isWorkoutFinished) return;
+            listItem.classList.add('completed-exercise');
+            listItem.classList.add('collapsed');
+            currentExerciseIndex++;
+            nextExercise();
+          };
+          if (window.speechSynthesis) synth.speak(utterance);
+        }
+      }
+
+      // Kick off
+      nextExercise();
+    }
+
+    // -- Timer (countdown) --
+    function startTimer(seconds, callback) {
+      remainingTime = seconds;
+      timer = setInterval(() => {
+        if (!isPaused) {
+          updateDisplay(remainingTime);
+          if (remainingTime === 30) speak('Thirty seconds');
+          if (remainingTime === 20) speak('Twenty seconds');
+          if (remainingTime === 10) speak('Ten seconds');
+
+          remainingTime--;
+          if (remainingTime < 0) {
+            clearInterval(timer);
+            if (!isWorkoutFinished && typeof callback === 'function') {
+              callback();
+            }
+          }
+        }
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
