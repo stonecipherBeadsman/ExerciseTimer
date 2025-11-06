@@ -407,17 +407,21 @@
     // -- Create <li> item in the UI --
     function addExerciseListItem(name, duration, reps) {
       const listItem = document.createElement('li');
+      const detailsWrapper = document.createElement('div');
+      detailsWrapper.className = 'exercise-details';
+
       let detailParts = [];
       if (duration) detailParts.push(duration + ' seconds');
       if (reps) detailParts.push(reps + ' reps');
       const detailText = detailParts.join(' ');
       const info = detailText ? `${name} - ${detailText}` : name;
 
-      listItem.innerHTML = `
-        <div class="exercise-details">
-          <span class="exercise-info">${info}</span>
-        </div>
-      `;
+      const infoSpan = document.createElement('span');
+      infoSpan.className = 'exercise-info';
+      infoSpan.textContent = info;
+
+      detailsWrapper.appendChild(infoSpan);
+      listItem.appendChild(detailsWrapper);
       const toggleBtn = document.createElement('button');
       toggleBtn.className = 'toggle-button';
       toggleBtn.textContent = 'Collapse';
@@ -684,8 +688,10 @@
             if (isWorkoutFinished) return;
             const repsDone = window.prompt('Enter the number of repetitions done:');
             if (repsDone !== null) {
-              listItem.querySelector('.exercise-details').innerHTML += 
-                ` (Completed: ${repsDone} reps)`;
+              const infoElement = listItem.querySelector('.exercise-info');
+              if (infoElement) {
+                infoElement.textContent += ` (Completed: ${repsDone} reps)`;
+              }
               if (parseInt(repsDone, 10) >= exercise.reps) {
                 listItem.classList.add('completed-exercise');
               } else {
@@ -735,6 +741,51 @@
           }
         }
       }, 1000);
+    }
+
+    // -- Testing & automation hooks --
+    if (typeof window !== 'undefined') {
+      window.__exerciseTimer = {
+        get workout() { return workout; },
+        set workout(value) {
+          workout = Array.isArray(value) ? value.slice() : [];
+        },
+        addExerciseListItem,
+        renderWorkoutList,
+        addExercisesFromString,
+        updateDisplay,
+        fallbackCopyText,
+        startTimer,
+        startWorkout,
+        stopWorkout,
+        handleStartOrRestart,
+        pauseOrResumeWorkout,
+        exportWorkoutToClipboard,
+        toggleCollapsible,
+        updateButtonStates,
+        resetForTests() {
+          clearInterval(timer);
+          timer = null;
+          workout = [];
+          isPaused = false;
+          remainingTime = undefined;
+          currentTimerCallback = null;
+          currentExerciseIndex = 0;
+          isWorkoutFinished = false;
+          exerciseList.innerHTML = '';
+          document.getElementById('exerciseName').value = '';
+          document.getElementById('exerciseDuration').value = '';
+          document.getElementById('exerciseReps').value = '';
+          document.getElementById('exerciseString').value = '';
+          document.getElementById('currentMovement').textContent = 'Ready?';
+          updateDisplay(0);
+          updateButtonStates();
+        },
+        setSpeechInterface(mock) {
+          synth = mock;
+          window.speechSynthesis = mock;
+        }
+      };
     }
   </script>
 </body>
